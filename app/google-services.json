@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1082105975771",
+    "project_id": "turismon-bd01b",
+    "storage_bucket": "turismon-bd01b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1082105975771:android:c713845ddb20417eaf8dfe",
+        "android_client_info": {
+          "package_name": "com.narino.turismo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-jbnzdzk-RMHifUZSNKKCoiycC9ZfP4I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
