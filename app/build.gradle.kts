@@ -55,6 +55,12 @@ dependencies {
     // Carga de imágenes para los destinos
     implementation(libs.coil.compose)
 
+    // Google Maps Compose, Play Services Location & OpenStreetMap
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
+    implementation(libs.osmdroid.android)
+
     // Pruebas
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

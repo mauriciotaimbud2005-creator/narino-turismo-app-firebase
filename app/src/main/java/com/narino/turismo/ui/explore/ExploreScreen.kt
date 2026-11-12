@@ -1,8 +1,7 @@
 package com.narino.turismo.ui.explore
 
-import androidx.compose.ui.platform.LocalContext
-import coil.request.CachePolicy
-import coil.request.ImageRequest
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,13 +24,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -68,12 +70,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.narino.turismo.domain.model.Place
 import com.narino.turismo.ui.theme.AccentLightGreen
 import com.narino.turismo.ui.theme.CardBorderColor
@@ -229,13 +234,17 @@ fun ExploreSuccessContent(
     onMunicipalitySelected: (String) -> Unit,
     onToggleFavorite: (String, Boolean) -> Unit
 ) {
+    var isMapView by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Search bar
+        // Search bar + Toggle Button (Lista / Mapa)
         SearchBarSection(
             query = state.searchQuery,
-            onQueryChanged = onSearchQueryChanged
+            onQueryChanged = onSearchQueryChanged,
+            isMapView = isMapView,
+            onToggleMapView = { isMapView = !isMapView }
         )
 
         // Categories horizontal filter chips
@@ -256,25 +265,42 @@ fun ExploreSuccessContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Destination Places list
-        if (state.places.isEmpty()) {
-            EmptyPlacesView(
-                isFavoriteTab = state.currentTab == 2
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+        // Vista de Mapa o Vista de Lista
+        if (isMapView) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                items(
-                    items = state.places,
-                    key = { it.id }
-                ) { place ->
-                    PlaceCard(
-                        place = place,
-                        onToggleFavorite = { onToggleFavorite(place.id, place.isFavorite) }
-                    )
+                MapViewComponent(
+                    places = state.places,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        } else {
+            if (state.places.isEmpty()) {
+                EmptyPlacesView(
+                    isFavoriteTab = state.currentTab == 2
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(
+                        items = state.places,
+                        key = { it.id }
+                    ) { place ->
+                        PlaceCard(
+                            place = place,
+                            onToggleFavorite = { onToggleFavorite(place.id, place.isFavorite) }
+                        )
+                    }
                 }
             }
         }
@@ -284,21 +310,30 @@ fun ExploreSuccessContent(
 @Composable
 fun SearchBarSection(
     query: String,
-    onQueryChanged: (String) -> Unit
+    onQueryChanged: (String) -> Unit,
+    isMapView: Boolean,
+    onToggleMapView: () -> Unit
 ) {
-    Box(
+    var localText by remember(query) { mutableStateOf(query) }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChanged,
+            value = localText,
+            onValueChange = { newText ->
+                localText = newText
+                onQueryChanged(newText)
+            },
             placeholder = {
                 Text(
                     text = "¿Qué lugar quieres descubrir?",
                     color = TextSecondary,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    maxLines = 1
                 )
             },
             leadingIcon = {
@@ -309,10 +344,13 @@ fun SearchBarSection(
                 )
             },
             trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = { onQueryChanged("") }) {
+                if (localText.isNotEmpty()) {
+                    IconButton(onClick = {
+                        localText = ""
+                        onQueryChanged("")
+                    }) {
                         Icon(
-                            imageVector = Icons.Default.Clear,
+                            imageVector = Icons.Default.Close,
                             contentDescription = "Limpiar búsqueda",
                             tint = TextSecondary
                         )
@@ -320,15 +358,35 @@ fun SearchBarSection(
                 }
             },
             singleLine = true,
-            shape = RoundedCornerShape(24.dp),
+            maxLines = 1,
+            shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
                 focusedBorderColor = PrimaryGreen,
                 unfocusedBorderColor = CardBorderColor
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .weight(1f)
+                .height(56.dp)
         )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Botón Conmutador Lista / Mapa
+        IconButton(
+            onClick = onToggleMapView,
+            modifier = Modifier
+                .size(56.dp)
+                .background(PrimaryGreen, shape = RoundedCornerShape(16.dp))
+        ) {
+            Icon(
+                imageVector = if (isMapView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.Map,
+                contentDescription = if (isMapView) "Ver como lista" else "Ver en mapa",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
     }
 }
 
@@ -419,6 +477,8 @@ fun PlaceCard(
     place: Place,
     onToggleFavorite: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -431,10 +491,10 @@ fun PlaceCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp)
-                    .background(SurfaceVariantClean) // Fondo neutro mientras descarga la imagen
+                    .background(SurfaceVariantClean)
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
+                    model = ImageRequest.Builder(context)
                         .data(place.imageUrl.trim())
                         .crossfade(true)
                         .diskCachePolicy(CachePolicy.ENABLED)
@@ -449,7 +509,6 @@ fun PlaceCard(
                             "Fallo al cargar URL: '${place.imageUrl}' - Causa: ${errorState.result.throwable.message}"
                         )
                     }
-
                 )
 
                 // Oscurecimiento leve superior para dar contraste a los badges
@@ -553,23 +612,67 @@ fun PlaceCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Ubicación
+                // Ubicación + Botón "Cómo llegar" GPS
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Ubicación",
-                        tint = AccentLightGreen,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = place.municipality,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = "Ubicación",
+                            tint = AccentLightGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = place.municipality,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextSecondary
+                        )
+                    }
+
+                    // Botón "Cómo llegar" directo a Google Maps
+                    Button(
+                        onClick = {
+                            val gmmIntentUri = Uri.parse("google.navigation:q=${place.latitude},${place.longitude}&mode=d")
+                            val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri).apply {
+                                setPackage("com.google.android.apps.maps")
+                            }
+                            try {
+                                context.startActivity(mapIntent)
+                            } catch (e: Exception) {
+                                val fallbackIntent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}")
+                                )
+                                context.startActivity(fallbackIntent)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Navigation,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Cómo llegar",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))

@@ -9,3 +9,4 @@ class ToggleFavoriteUseCase(
         return repository.toggleFavorite(placeId, currentStatus)
     }
 }
+

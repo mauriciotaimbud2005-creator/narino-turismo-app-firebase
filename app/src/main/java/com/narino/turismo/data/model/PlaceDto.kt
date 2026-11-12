@@ -7,10 +7,12 @@ data class PlaceDto(
     val name: String = "",
     val municipality: String = "",
     val category: String = "",
+    val description: String = "",
     val imageUrl: String = "",
     val rating: Double = 0.0,
-    val description: String = "",
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0
 ) {
     fun toDomain(isFavoriteOverride: Boolean = this.isFavorite): Place {
         return Place(
@@ -18,10 +20,12 @@ data class PlaceDto(
             name = name,
             municipality = municipality,
             category = category,
+            description = description,
             imageUrl = imageUrl,
             rating = rating,
-            description = description,
-            isFavorite = isFavoriteOverride
+            isFavorite = isFavoriteOverride,
+            latitude = latitude,
+            longitude = longitude
         )
     }
 }
